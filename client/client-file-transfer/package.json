@@ -1,0 +1,27 @@
+{
+  "name": "e-ink-client",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc && node dist/main.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/core-js": "^2.5.0",
+    "@types/express": "^4.17.3",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "fs": "0.0.1-security",
+    "request-promise": "^4.2.4",
+    "tsc": "^1.20150623.0",
+    "typescript": "^3.3.3",
+    "typescript-require": "^0.2.10",
+    "watch": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^13.9.3"
+  }
+}

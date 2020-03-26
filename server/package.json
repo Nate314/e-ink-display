@@ -1,0 +1,27 @@
+{
+  "name": "e-ink-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc && node dist/main.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/core-js": "^2.5.0",
+    "@types/jimp": "^0.2.28",
+    "fs": "0.0.1-security",
+    "jimp": "^0.9.6",
+    "node-fetch": "^2.6.0",
+    "request-promise": "^4.2.4",
+    "tsc": "^1.20150623.0",
+    "typescript": "^3.3.3",
+    "typescript-require": "^0.2.10",
+    "watch": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^13.9.3"
+  }
+}
