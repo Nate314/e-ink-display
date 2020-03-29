@@ -16,18 +16,18 @@ import traceback
 logging.basicConfig(level=logging.DEBUG)
 
 try:
+
+    logging.info("epd4in2 Demo")
+    epd = epd4in2.EPD()
+    logging.info("init and Clear")
+    epd.init()
+    epd.Clear()
+
     while True:
-        logging.info("epd4in2 Demo")
-
-        epd = epd4in2.EPD()
-        logging.info("init and Clear")
-        epd.init()
-        epd.Clear()
-
         logging.info("reading bmp file")
         MyImage = Image.open(os.path.join(imgdir, 'img.bmp'))
         epd.display(epd.getbuffer(MyImage))
-        time.sleep(4)
+        time.sleep(15)
 
 except IOError as e:
     logging.info(e)

@@ -4,7 +4,8 @@ import fetch from 'node-fetch';
 
 const jimp: Jimp = require('jimp');
 const profile_pic = 'https://cdn.discordapp.com/avatars/309176098590294026/531d8879a9929364290785323c02948e.jpg';
-const postURL = 'http://localhost:8080/';
+// const postURL = 'http://localhost:8080/';
+const postURL = 'http://10.0.0.31:8080/';
 const filename = './img.bmp';
 
 // send image to client
@@ -32,7 +33,8 @@ async function getTime(): Promise<typeof jimp> {
     const background = new jimp(400, 32, '#FFFFFF');
     const font = await jimp.loadFont(jimp.FONT_SANS_32_BLACK);
     const now = new Date().toString();
-    const time = now.substr(0, now.indexOf(' GMT') - 3);
+    const removeSeconds = false;
+    const time = now.substr(0, now.indexOf(' GMT') - (removeSeconds ? 3 : 0));
     background.print(font, 0, 0, {
         text: time,
         alignmentX: jimp.HORIZONTAL_ALIGN_CENTER,
@@ -74,7 +76,7 @@ function main() {
                     if (err) throw err;
                     main();
                 });
-            }, 1000);
+            }, 15000);
         });
     })
     .catch(console.error);
