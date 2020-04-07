@@ -54,7 +54,7 @@ function postImage() {
 
 // returns the current date, day, and time
 function getTimeObject(): { date: string, day: string, time: string } {
-    const now = new Date().toString();
+    const now = new Date(new Date().toLocaleString('en-US', {timeZone: "America/Chicago"})).toString();
     const time = now.substr(0, now.indexOf(' GMT'));
     const partial_days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const full_days = ['', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -108,7 +108,7 @@ async function getTimeImage(): Promise<typeof jimp> {
 }
 
 // returns the S&P500, Dow30, and Nasdaq info from yahoo finance
-async function getStonksImage(): Promise<typeof jimp> {
+async function getStonksImage(): Promise<{ image: typeof jimp, stonk: boolean }> {
     const width = 400 / 3;
     const height = 300 - 32 - 1;
     const background = new jimp(width, height, WHITE);
@@ -127,9 +127,11 @@ async function getStonksImage(): Promise<typeof jimp> {
             await background.print(...args(v.points, 20, i));
             await background.print(...args(`${v.change} (${v.percentchange})`, 40, i));
         });
-        return background;
+        data.map(x => console.log(x.percentchange.substr(0, 1)));
+        const stonk: boolean = data.map(x => x.percentchange.substr(0, 1) === '+').filter(x => x).length >= 2;
+        return { image: background, stonk: stonk };
     }
-    return new Promise<typeof jimp>(async resolve => {
+    return new Promise<{ image: typeof jimp, stonk: boolean }>(async resolve => {
         const body = await getURL('http://finance.yahoo.com/');
         resolve(await compose((body.split('class="Maw(160px)"').filter((_, i) => i !== 0).map(x => x.split('</h3>')[0])
             .map(data => ({ label: getxtag(data, 'a', 1), points: getxtag(data, 'span', 1),
@@ -138,9 +140,15 @@ async function getStonksImage(): Promise<typeof jimp> {
 }
 
 // returns an analog clock picture
-async function getAnalogClockImage(width: number, height: number): Promise<typeof jimp> {
+async function getAnalogClockImage(width: number, height: number, stonk: boolean): Promise<typeof jimp> {
     const background = new jimp(width, height, BLACK);
     // TODO: render analog clock
+    const image = await jimp.read('https://i.etsystatic.com/10316556/r/il/3129fa/1990666656/il_570xN.1990666656_dilw.jpg');
+    await image.rotate(stonk ? 0 : 180);
+    await image.resize(250, 250);
+    await image.grayscale();
+    await image.contrast(1);
+    await background.composite(image, 5, 5);
     return background;
 }
 
@@ -156,9 +164,10 @@ async function createImage() {
     }
 
     // compose images together
-    await background.composite(await getStonksImage(), 0, 0);
+    const result = await getStonksImage();
+    await background.composite(result.image, 0, 0);
     await background.composite(await getTimeImage(), 0, displayHeight - 32);
-    await background.composite(await getAnalogClockImage(width, height), x, y);
+    await background.composite(await getAnalogClockImage(width, height, result.stonk), x, y);
 
     // convert to black and white and write image to disk
     await background.grayscale();
