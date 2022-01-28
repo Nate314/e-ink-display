@@ -12,9 +12,9 @@ const WHITE = '#FFFFFF';
 
 // returns the information in the xth tag from the html data passed
 const getxtag = (data: string, tag: string, x: number) => {
-    let result: string = data.split(`<${tag}`)[x].split('>')[1].split(`</${tag}>`)[0];
-    result = result.substr(0, Math.max(result.length - (tag.length + 2), 0));
-    result = result.replace('&amp;', '&');
+    let result: string = data?.split(`<${tag}`)[x]?.split('>')[1]?.split(`</${tag}>`)[0];
+    result = result?.substr(0, Math.max(result.length - (tag.length + 2), 0));
+    result = result?.replace('&amp;', '&');
     return result;
 };
 
@@ -122,10 +122,9 @@ async function getStonksImage(): Promise<{ image: typeof jimp, stonk: boolean }>
             width, thirdheight
         ];
         data.forEach(async (v: {label, points, change, percentchange}, i: number) => {
+            const text = [v.label, v.points, `${v.change} (${v.percentchange})`.replace('((', '(').replace('))', ')')];
             await background.composite(getBorder(width, thirdheight, 2), 0, i * thirdheight);
-            await background.print(...args(v.label, 0, i));
-            await background.print(...args(v.points, 20, i));
-            await background.print(...args(`${v.change} (${v.percentchange})`, 40, i));
+            text.forEach(async (line, lineNumber) => await background.print(...args(line, -10 + (20 * lineNumber), i)));
         });
         data.map(x => console.log(x.percentchange.substr(0, 1)));
         const stonk: boolean = data.map(x => x.percentchange.substr(0, 1) === '+').filter(x => x).length >= 2;
@@ -133,9 +132,15 @@ async function getStonksImage(): Promise<{ image: typeof jimp, stonk: boolean }>
     }
     return new Promise<{ image: typeof jimp, stonk: boolean }>(async resolve => {
         const body = await getURL('http://finance.yahoo.com/');
-        resolve(await compose((body.split('class="Maw(160px)"').filter((_, i) => i !== 0).map(x => x.split('</h3>')[0])
-            .map(data => ({ label: getxtag(data, 'a', 1), points: getxtag(data, 'span', 1),
-                change: getxtag(data, 'span', 2), percentchange: getxtag(data, 'span', 4) })))));
+        resolve(await compose((body.split('class="Maw(160px)"').filter((_, i) => i !== 0 && i <= 3).map(x => x.split('</h3>')[0])
+            .map(data => {
+                return {
+                    label: getxtag(data, 'a', 1),
+                    points: getxtag(data, 'fin-streamer', 1),
+                    change: getxtag(data, 'span', 1),
+                    percentchange: getxtag(data, 'span', 2)
+                };
+            }))));
     });
 }
 
