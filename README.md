@@ -16,6 +16,10 @@ So, there are 3 main pieces to this project:
     - application that will generate bitmap images every minute or two to send to the client in order to be displayed on the e-ink display
     - this can run on any computer on the same network as the e-Paper module
 
+## Running with Docker
+
+`./run.ps1` (PowerShell) or `./run.sh` (bash) builds and starts the server and the client-file-transfer API with Docker Compose, picks a free host port and prints the client URL. The server posts each image to the client container. To drive the real display, set `CLIENT_URL` in `.env` to the Pi's address (see `.env.example`). `./run.ps1 down` stops the stack.
+
 ![Image of 4.2inch e-Paper Module on desk](./client/img/display-on-desk.jpg)
 
 ![Image of 4.2inch e-Paper Module on desk](./client/img/img.bmp)

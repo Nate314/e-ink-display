@@ -1,0 +1,25 @@
+services:
+  client:
+    build:
+      context: ./client/client-file-transfer
+    ports:
+      - "${CLIENT_PORT:-8080}:8080"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  server:
+    build:
+      context: ./server
+    environment:
+      # Where the server posts each image. Set CLIENT_URL in .env to target the Raspberry Pi instead.
+      CLIENT_URL: ${CLIENT_URL:-http://client:8080/}
+    depends_on:
+      - client
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

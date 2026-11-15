@@ -19,7 +19,8 @@ router.use(cors.default(options));
 router.options('*', cors.default(options));
 
 const app = express();
-app.use(express.json({limit: '1mb'}));
+// a JSON-escaped 400x300 24-bit bmp is about 1.2mb
+app.use(express.json({limit: '2mb'}));
 const port = 8080;
 
 // get
