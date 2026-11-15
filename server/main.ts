@@ -1,14 +1,14 @@
-import { unlink, readFileSync, writeFileSync } from 'fs';
-import Jimp from 'jimp';
-import fetch from 'node-fetch';
+import { unlink, readFileSync } from 'fs';
+import { Jimp, loadFont, HorizontalAlign, VerticalAlign } from 'jimp';
+import { SANS_16_BLACK } from 'jimp/fonts';
 
-const jimp: Jimp = require('jimp');
+type Image = InstanceType<typeof Jimp>;
 const profile_pic = 'https://cdn.discordapp.com/avatars/309176098590294026/531d8879a9929364290785323c02948e.jpg';
 // const postURL = 'http://localhost:8080/';
-const postURL = 'http://10.0.0.31:8080/';
+const postURL = process.env.CLIENT_URL || 'http://10.0.0.31:8080/';
 const filename = './img.bmp';
-const BLACK = '#000000';
-const WHITE = '#FFFFFF';
+const BLACK = 0x000000ff;
+const WHITE = 0xffffffff;
 
 // returns the information in the xth tag from the html data passed
 const getxtag = (data: string, tag: string, x: number) => {
@@ -20,12 +20,7 @@ const getxtag = (data: string, tag: string, x: number) => {
 
 // returns the html behind the specified url
 function getURL(url: string): Promise<string> {
-    const request = require('request');
-    return new Promise<string>(resolve => {
-        request({
-            uri: url
-        }, (err, req, body) => resolve(body));
-    });
+    return fetch(url).then(response => response.text());
 }
 
 // send image to client
@@ -81,56 +76,59 @@ function getTimeObject(): { date: string, day: string, time: string } {
     };
 }
 
-function getBorder(width: number, height: number, borderThickness: number): any {
-    const box = new jimp(width, height, BLACK);
-    const innerbox = new jimp(width - borderThickness, height - borderThickness, WHITE);
+function getBorder(width: number, height: number, borderThickness: number): Image {
+    // jimp 1.x needs whole pixel sizes, callers pass thirds of the display
+    width = Math.floor(width);
+    height = Math.floor(height);
+    const box = new Jimp({ width, height, color: BLACK });
+    const innerbox = new Jimp({ width: width - borderThickness, height: height - borderThickness, color: WHITE });
     box.composite(innerbox, borderThickness / 2, borderThickness / 2);
     return box;
 }
 
 // returns the date, day of the week, and fuzzy time in one 400x32 image
-async function getTimeImage(): Promise<typeof jimp> {
-    const background = new jimp(400, 32, WHITE);
+async function getTimeImage(): Promise<Image> {
+    const background = new Jimp({ width: 400, height: 32, color: WHITE });
     const thirdwidth = background.bitmap.width / 3;
     const height = background.bitmap.height;
     const { date, day, time } = getTimeObject();
-    const font = await jimp.loadFont(jimp.FONT_SANS_16_BLACK);
-    const args = (str, pos): [any, number, number, any, number, number] => [
-        font, pos * thirdwidth, 0,
-        { text: str, alignmentX: jimp.HORIZONTAL_ALIGN_CENTER, alignmentY: jimp.VERTICAL_ALIGN_MIDDLE },
-        thirdwidth, height
-    ];
+    const font = await loadFont(SANS_16_BLACK);
+    const args = (str: string, pos: number) => ({
+        font, x: pos * thirdwidth, y: 0,
+        text: { text: str, alignmentX: HorizontalAlign.CENTER, alignmentY: VerticalAlign.MIDDLE },
+        maxWidth: thirdwidth, maxHeight: height
+    });
     [date, day, time].forEach(async (v: string, i: number) => {
         await background.composite(getBorder(thirdwidth, height, 4), i * thirdwidth + Number(i > 0), 0);
-        await background.print(...args(v, i));
+        await background.print(args(v, i));
     });
     return background;
 }
 
 // returns the S&P500, Dow30, and Nasdaq info from yahoo finance
-async function getStonksImage(): Promise<{ image: typeof jimp, stonk: boolean }> {
-    const width = 400 / 3;
+async function getStonksImage(): Promise<{ image: Image, stonk: boolean }> {
+    const width = Math.floor(400 / 3);
     const height = 300 - 32 - 1;
-    const background = new jimp(width, height, WHITE);
+    const background = new Jimp({ width, height, color: WHITE });
     await background.composite(getBorder(width, height, 4), 0, 0);
     const compose = async (data: {label, points, change, percentchange}[]) => {
         const thirdheight = height / 3;
-        const font = await jimp.loadFont(jimp.FONT_SANS_16_BLACK);
-        const args = (str: string, offset: number, pos: number): [any, number, number, any, number, number] => [
-            font, 0, (pos * thirdheight) + offset + (thirdheight * 0.2),
-            { text: str, alignmentX: jimp.HORIZONTAL_ALIGN_CENTER, alignmentY: jimp.VERTICAL_ALIGN_TOP },
-            width, thirdheight
-        ];
+        const font = await loadFont(SANS_16_BLACK);
+        const args = (str: string, offset: number, pos: number) => ({
+            font, x: 0, y: (pos * thirdheight) + offset + (thirdheight * 0.2),
+            text: { text: str, alignmentX: HorizontalAlign.CENTER, alignmentY: VerticalAlign.TOP },
+            maxWidth: width, maxHeight: thirdheight
+        });
         data.forEach(async (v: {label, points, change, percentchange}, i: number) => {
             const text = [v.label, v.points, `${v.change} (${v.percentchange})`.replace('((', '(').replace('))', ')')];
             await background.composite(getBorder(width, thirdheight, 2), 0, i * thirdheight);
-            text.forEach(async (line, lineNumber) => await background.print(...args(line, -10 + (20 * lineNumber), i)));
+            text.forEach(async (line, lineNumber) => await background.print(args(line, -10 + (20 * lineNumber), i)));
         });
         data.map(x => console.log(x.percentchange.substr(0, 1)));
         const stonk: boolean = data.map(x => x.percentchange.substr(0, 1) === '+').filter(x => x).length >= 2;
         return { image: background, stonk: stonk };
     }
-    return new Promise<{ image: typeof jimp, stonk: boolean }>(async resolve => {
+    return new Promise<{ image: Image, stonk: boolean }>(async resolve => {
         const body = await getURL('http://finance.yahoo.com/');
         resolve(await compose((body.split('class="Maw(160px)"').filter((_, i) => i !== 0 && i <= 3).map(x => x.split('</h3>')[0])
             .map(data => {
@@ -145,13 +143,13 @@ async function getStonksImage(): Promise<{ image: typeof jimp, stonk: boolean }>
 }
 
 // returns an analog clock picture
-async function getAnalogClockImage(width: number, height: number, stonk: boolean): Promise<typeof jimp> {
-    const background = new jimp(width, height, BLACK);
+async function getAnalogClockImage(width: number, height: number, stonk: boolean): Promise<Image> {
+    const background = new Jimp({ width, height, color: BLACK });
     // TODO: render analog clock
-    const image = await jimp.read('https://i.etsystatic.com/10316556/r/il/3129fa/1990666656/il_570xN.1990666656_dilw.jpg');
+    const image = await Jimp.read('https://i.etsystatic.com/10316556/r/il/3129fa/1990666656/il_570xN.1990666656_dilw.jpg');
     await image.rotate(stonk ? 0 : 180);
-    await image.resize(250, 250);
-    await image.grayscale();
+    await image.resize({ w: 250, h: 250 });
+    await image.greyscale();
     await image.contrast(1);
     await background.composite(image, 5, 5);
     return background;
@@ -161,10 +159,10 @@ async function getAnalogClockImage(width: number, height: number, stonk: boolean
 async function createImage() {
     const displayWidth = 400;
     const displayHeight = 300;
-    const background = new jimp(displayWidth, displayHeight, WHITE);
+    const background = new Jimp({ width: displayWidth, height: displayHeight, color: WHITE });
     const { x, y, width, height } = {
         x: (displayWidth / 3) + 2, y: 2,
-        width: displayWidth - ((displayWidth / 3) + 4),
+        width: Math.floor(displayWidth - ((displayWidth / 3) + 4)),
         height: displayHeight - 32 - 4
     }
 
@@ -175,9 +173,9 @@ async function createImage() {
     await background.composite(await getAnalogClockImage(width, height, result.stonk), x, y);
 
     // convert to black and white and write image to disk
-    await background.grayscale();
+    await background.greyscale();
     await background.contrast(1);
-    await background.writeAsync(filename);
+    await background.write(filename);
 }
 
 // main loop
